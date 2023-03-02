@@ -2,4 +2,4 @@ serial
 pandas
 pathlib
 tabulate
-tkinter
+tk
