@@ -1,16 +1,15 @@
 # Test_Serial_Logger
 
 ## How to install:
-1. Download this GitHub repoas zip and all of its contents to your local computer(only works on Linux and windows based systems for now)
+1. Download this GitHub repo as zip and all of its contents to your local computer(only works on Linux and windows based systems for now)
 2. Ensure the latest version of python3 is installed on your machine.       https://www.python.org/downloads/
 Note: don't forget to add python to PATH during the installation process (there will be a little check box at the bottom of the install window at one point).
 3. Ensure you have the lastest FTDI USB to Serial adapter driver for your cable, else the device will not be detected.(currently doesn't work with silabs chips)
-I have had better luck not using the universal and instead using the VCP driver.
 4. Install pip.   https://www.geeksforgeeks.org/how-to-install-pip-on-windows/
 5. Use pip to run the following command:
 
 ```
- pip install -r /path/to/requirments.txt
+ pip install -r {/path/to/requirments.txt}
 ```
 
 ## How to Make a Cable
