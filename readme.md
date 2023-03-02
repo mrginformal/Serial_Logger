@@ -4,7 +4,7 @@
 1. Download this GitHub repoas zip and all of its contents to your local computer(only works on Linux and windows based systems for now)
 2. Ensure the latest version of python3 is installed on your machine.       https://www.python.org/downloads/
 Note: don't forget to add python to PATH during the installation process (there will be a little check box at the bottom of the install window at one point).
-3. Navigate to the Silabs website and ensure that latest Silabs CP210x USB to UART driver is installed.     https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads 
+3. Ensure you have the lastest FTDI USB to Serial adapter driver for your cable, else the device will not be detected.(currently doesn't work with silabs chips)
 I have had better luck not using the universal and instead using the VCP driver.
 4. Install pip.   https://www.geeksforgeeks.org/how-to-install-pip-on-windows/
 5. Use pip to run the following command:
@@ -23,3 +23,7 @@ Once this is done, and is tested to confirm that it works, you should then hot g
 
 Note: Ensure that the switch is only ever used in the "5V" position. NOT the "3.3V" position. You can hot glue this part too if you'd like. We have a bunch of fun colors to help track whose is whose and to add a little flare and sass into your test equipment
 
+## How to use
+
+First connect the cable to the yeti you wish to log from, it should have PCU Firmware at or above 5.12. Turn on the port, then hold it until the usb light begins to blink, this means data is being sent. 
+You can now launch the script in what ever way you like. You will be asked for the filename you wish to save the data as, then you will select the parameters you wish to display(all parameters are logged dispite selections). Click Continue and data will begin to appear in the terminal as it is recieved. This will run until you end the program with a keyboard interrupt. This is done by preccing control + c for windows and command + c for mac. 

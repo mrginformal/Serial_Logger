@@ -95,7 +95,7 @@ def main():
 
     while True:
         try:
-            filename = Path(input('Enter Filename to save as: ') + '.csv')
+            filename = Path('Output_Files/' + input('Enter Filename to save as: ') + '.csv')
             break
         except:
             print('try again')
