@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import ttk
 import math
 import datetime
+import ast
 
 
 def setup_gui(dict1):
@@ -49,7 +50,7 @@ def setup_gui(dict1):
 def read_data(port):
     line=port.readline()
     ascii_data = line.decode(encoding='UTF-8')
-    a = eval(ascii_data)
+    a = ast.literal_eval(ascii_data)
     c = {item: [a[item]] for item in a}
     c['DateTime'] = datetime.datetime.now()
     return c
@@ -70,7 +71,7 @@ def run(filename):
     try:
         while True:
             try:
-            pretty_data = read_data(selected_port)
+                pretty_data = read_data(selected_port)
 
                 table = pd.concat([table] + [pd.DataFrame(pretty_data, index=[0])])
                 if n == 0:
@@ -86,7 +87,7 @@ def run(filename):
                     table.to_csv(filename, mode='a', index=False, header=False)
                     table = None
                 n += 1
-            except ValueError, SyntaxError as err:
+            except (ValueError, SyntaxError, NameError):
                 print('Decode or Syntax Error detected, skipping datapoint')
 
 
