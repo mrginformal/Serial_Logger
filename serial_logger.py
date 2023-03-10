@@ -69,22 +69,25 @@ def run(filename):
     n = 0
     try:
         while True:
+            try:
             pretty_data = read_data(selected_port)
 
-            table = pd.concat([table] + [pd.DataFrame(pretty_data, index=[0])])
-            if n == 0:
-                table.to_csv(filename, index=False)
-                selected_port.close()
-                selected_cols = setup_gui(pretty_data)
-                selected_port.open()
-                print('starting')
-            if not n % 5 and n != 0:
-                print(tabulate(table[selected_cols].tail(), headers=selected_cols))
+                table = pd.concat([table] + [pd.DataFrame(pretty_data, index=[0])])
+                if n == 0:
+                    table.to_csv(filename, index=False)
+                    selected_port.close()
+                    selected_cols = setup_gui(pretty_data)
+                    selected_port.open()
+                    print('starting')
+                if not n % 5 and n != 0:
+                    print(tabulate(table[selected_cols].tail(), headers=selected_cols))
 
-            if not n % 300:
-                table.to_csv(filename, mode='a', index=False, header=False)
-                table = None
-            n += 1
+                if not n % 300:
+                    table.to_csv(filename, mode='a', index=False, header=False)
+                    table = None
+                n += 1
+            except ValueError, SyntaxError as err:
+                print('Decode or Syntax Error detected, skipping datapoint')
 
 
     except KeyboardInterrupt:
