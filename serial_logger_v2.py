@@ -59,11 +59,15 @@ def run(filename):
 
     ports = serial.tools.list_ports.comports()
     port_list = [p for p in ports]
+    port_names = [str(p.device) + ' >> ' + str(p.manufacturer) for p in port_list]
+    print(f'detected COM ports: {port_names}')
+
+    p_selection = input('Please type the exact name of the COM port you wish to use(example: COM9): ')
+
     vid = 1027                          #vid for ftdi usb --> serial converter, change to what ever chip you are using
 
     for p in ports:
-        print(p.vid)
-        if p.vid == vid:
+        if p.device == p_selection:
             selected_port = serial.Serial(port=p.device, baudrate=115200, timeout=10)
 
 
