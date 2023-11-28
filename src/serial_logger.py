@@ -52,7 +52,15 @@ def read_data(port, start_time):
     line=port.readline()
     ascii_data = line.decode(encoding='UTF-8')
     a = ast.literal_eval(ascii_data)
-    c = {item: [a[item]] for item in a}
+    c = {}
+    for item in a:
+        if 'Pack(mA)' in item:
+            c[item] = [a[item] * 10]
+            c[item.replace('Pack(mA)', 'Pack_Power(Wh - Calculated)')] = [a[item] * a[item[:-4] + '(mV)'] / 1_000_00]   #Pack_Power(Wh - Calculated)
+        else:
+            c[item] = [a[item]]
+
+    c['Inverter Pwr(W - Calculated)'] = [a['InvOut(mA)'] * a['InvOut(mV)'] / 1_000_000]
     c['Time'] = round(time.time() - start_time, 1)
     return c
 
