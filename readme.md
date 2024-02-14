@@ -22,7 +22,7 @@ Note: don't forget to add python to PATH during the installation process (there 
 
 To everyone that'll be involved in the Yeti 6G project, you'll need your own serial to USB converter, much like the one I showed at the training earlier this week. I have the converter PCBs at my desk, so the only part you'll need aside from that is a male USB to bare wire cable. You will need the D+ D- pins, so the USB to APP adapters will NOT work. However, an old USB mini/USB micro cable will work. With the bare wires exposed, you'll only need the black, white, and baja blast™ green colored cables. You can trim the red one back as we will not be using it. You will then solder these wires to the pins of the serial converter according to the picture below.
 
-<img src="images\serial_logger_pic1.PNG" alt="Converter" title="Converter">
+<img src="serial_logger_pic1.PNG" alt="Converter" title="Converter">
 
 Once this is done, and is tested to confirm that it works, you should then hot glue for strain relief and to make sure these connections do not desolder or snap off. 
 
