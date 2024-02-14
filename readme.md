@@ -1,6 +1,12 @@
 # Test_Serial_Logger
 
 ## How to install:
+
+# Meathod 1(.exe):
+1. Ensure you have the lastest FTDI USB to Serial adapter driver(or equivalent for whatever adapter you are using) for your cable, else the device will not be detected.
+2. Simply run the .exe file
+
+# Meathod 2(run the src code):
 1. Download this GitHub repo as zip and all of its contents to your local computer
 2. Ensure the latest version of python3 is installed on your machine.       https://www.python.org/downloads/
 Note: don't forget to add python to PATH during the installation process (there will be a little check box at the bottom of the install window at one point).
