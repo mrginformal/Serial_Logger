@@ -55,7 +55,7 @@ class APP(ctk.CTk):
                     '1 hour': 3600,
                     'ShowMeTheData' : None}
         
-        self.grpahing_interval = ctk.StringVar(value='5 min')
+        self.graphing_interval = ctk.StringVar(value='5 min')
         
 
         ############## selections frame
@@ -108,7 +108,7 @@ class APP(ctk.CTk):
         
         self.interval_label = ctk.CTkLabel(self.options_frame, corner_radius=5, text='Graphing Interval', fg_color='grey18', text_color='yellow2', font=self.font1)
         self.interval_label.grid(row=4, column=0, padx=5, pady=0, sticky='nsew')
-        self.port_menu = ctk.CTkOptionMenu(self.options_frame, values=list(self.time_map.keys()), variable=self.grpahing_interval, button_color='black', dropdown_hover_color='grey50', button_hover_color='grey50', dropdown_font=self.font2, text_color='yellow2', dropdown_text_color='yellow2', dropdown_fg_color='black', font=self.font2, fg_color='black')
+        self.port_menu = ctk.CTkOptionMenu(self.options_frame, values=list(self.time_map.keys()), variable=self.graphing_interval, button_color='black', dropdown_hover_color='grey50', button_hover_color='grey50', dropdown_font=self.font2, text_color='yellow2', dropdown_text_color='yellow2', dropdown_fg_color='black', font=self.font2, fg_color='black')
         self.port_menu.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
 
         self.start_button = ctk.CTkButton(self.options_frame, corner_radius=5, text='Start', fg_color='yellow2', text_color='grey18', command=self.log_data, font=self.font1, hover_color='grey50')
@@ -120,7 +120,6 @@ class APP(ctk.CTk):
         if self.start_button_state: # they clicked the start button
 
             try:
-                
                 # Verify valid inputs, then disable inputs so they can't change
                 if not self.is_valid_filename:
                     raise ValueError('No valid Filename selected')
@@ -141,7 +140,10 @@ class APP(ctk.CTk):
 
                 self.open_port.close()
                 for i, label in enumerate(initial_data):
-                    self.parameter_selections[label] = ctk.CTkCheckBox(self.selection_frame, text=label, corner_radius=10, checkbox_width=50, hover_color='grey50', border_color='black', fg_color='black', border_width=3).grid(row=math.floor(i/5), column=i%5, padx=5, pady=5, sticky='nsew')
+                    button = ctk.CTkCheckBox(self.selection_frame, text=label, corner_radius=10, checkbox_width=50, hover_color='grey50', border_color='black', fg_color='black', border_width=3)
+                    button.grid(row=math.floor(i/5), column=i%5, padx=5, pady=5, sticky='nsew')
+                    self.parameter_selections[label] = button
+                
                 self.open_port.open()
 
                 # open thread which setsup and handles the data processing/graphing loop
@@ -192,24 +194,27 @@ class APP(ctk.CTk):
         while True:
             if self.stop_flag.is_set():
                 break
-
+            
             try:
-
                 data = self.read_data(self.open_port, start_time)
 
                 # if the new line has differnt keys(aka parameter like a new tank added or removed) it will delete old buttons and generate new buttons
+
                 if self.parameter_selections.keys() != data.keys():
+
+                    self.parameter_selections = {}
 
                     for widget in self.selection_frame.winfo_children():              #all existing buttons need to be deleted before making the new ones, but we only want to delete the buttons
                         if isinstance(widget, (ctk.CTkCheckBox)):
                             widget.destroy()
 
                     for i, label in enumerate(data):
-                        self.parameter_selections[label] = ctk.CTkCheckBox(self.selection_frame, text=label, corner_radius=10, checkbox_width=50, hover_color='grey50', border_color='black', fg_color='black', border_width=3).grid(row=math.floor(i/5), column=i%5, padx=5, pady=5, sticky='nsew')
+                        button = ctk.CTkCheckBox(self.selection_frame, text=label, corner_radius=10, checkbox_width=50, hover_color='grey50', border_color='black', fg_color='black', border_width=3)
+                        button.grid(row=math.floor(i/5), column=i%5, padx=5, pady=5, sticky='nsew')
+                        self.parameter_selections[label] = button
 
                 self.data_table = pd.concat([self.data_table] + [pd.DataFrame(data, index=[0])], join='outer')
                 self.graph_table = self.data_table.tail(self.time_map[self.graphing_interval.get()]).sort_values('Time')
-
                 self.update_graph()
 
             except Exception as err:
@@ -236,36 +241,38 @@ class APP(ctk.CTk):
 
             for param, button in self.parameter_selections.items():
                 line = self.lines[param]
+                if button:
 
-                if button.get():
-                    handles.append(line)
-                    line.set_visible(True)
-                    y_data = self.graph_table[param].values
-                    line.set_data(x_data, y_data)
-                    last_datapoint = round(y_data[-1],3)
-                    label = f'{param}: \n{last_datapoint}'
-                    line.set_label(label)
-                    labels.append(label)
+                    if button.get():
+                        handles.append(line)
+                        line.set_visible(True)
+                        y_data = self.graph_table[param].values
+                        line.set_data(x_data, y_data)
+                        last_datapoint = round(y_data[-1],3)
+                        label = f'{param}: \n{last_datapoint}'
+                        line.set_label(label)
+                        labels.append(label)
 
-                    # This section sets the x and y limits for viewing the graph based on only visible/selected parameters
-                    if y_min:
-                        if min(y_data) < y_min:
+                        # This section sets the x and y limits for viewing the graph based on only visible/selected parameters
+                        if y_min:
+                            if min(y_data) < y_min:
+                                y_min = min(y_data)
+                        else:
                             y_min = min(y_data)
-                    else:
-                        y_min = min(y_data)
 
-                    if y_max:
-                        if max(y_data) > y_max:
+                        if y_max:
+                            if max(y_data) > y_max:
+                                y_max = max(y_data)
+                        else: 
                             y_max = max(y_data)
-                    else: 
-                        y_max = max(y_data)
-                    
-                    # used to add margin to the view so that two graphs which are on the edges to not overlap with the axis, not nessisary for max
-                    scaling_factor = (y_max - y_min) / 50
-                    y_min -= scaling_factor
+                        
+                        # used to add margin to the view so that two graphs which are on the edges to not overlap with the axis, not nessisary for max
+                        scaling_factor = (y_max - y_min) / 25
+                        y_min -= scaling_factor
+                        y_max += scaling_factor
 
-                else:
-                    line.set_visible(False)  
+                    else:
+                        line.set_visible(False)  
 
             if not y_max == None and not y_min == None:
                 self.ax1.set_xlim(x_min - 1, x_max + 1)
@@ -301,19 +308,24 @@ class APP(ctk.CTk):
         exit_box.protocol("WM_DELETE_WINDOW", self._quit) 
 
 
-    def read_data(port: object, start_time: float) -> dict:
+    def read_data(self, port: object, start_time: float) -> dict:
 
         line = port.readline()
         ascii_data = line.decode(encoding='UTF-8')
         a = ast.literal_eval(ascii_data)
         c = {}
         for item in a:
-            if 'Pack(mA)' in item:
-                c[item] = [a[item] * 10]
+            if 'Pack(mA)' in item:          #corrects for the fact that pack actually reports in centiamps, not (mA)
+                c[item.replace('(mA)', '(A)')] = [a[item] / 100]
                 c[item.replace('Pack(mA)', 'Pack_Power(Wh - Calculated)')] = [a[item] * a[item[:-4] + '(mV)'] / 1_000_00]   #Pack_Power(Wh - Calculated)
+
+            elif '(mA)' in item:
+                c[item.replace('(mA)', '(A)')] = [a[item] / 1000]
+            elif '(mV)' in item:
+                c[item.replace('(mV)', '(V)')] = [a[item] / 1000]
             else:
                 c[item] = [a[item]]
-
+        
         c['Inverter Pwr(W - Calculated)'] = [a['InvOut(mA)'] * a['InvOut(mV)'] / 1_000_000]
         c['Time'] = round(time.time() - start_time, 1)
         return c
@@ -322,7 +334,7 @@ class APP(ctk.CTk):
     def save(self, header=True, mode='a'):
 
         if self.data_table is not None:
-            self.data_table.sort_values('timestamp').to_csv(self.filename, mode=mode, header=header)
+            self.data_table.sort_values('Time').to_csv(self.filename, mode=mode, header=header)
             print('saving')
         self.data_table = None    
 
