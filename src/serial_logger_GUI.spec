@@ -41,5 +41,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['logpic_zvM_icon.ico'],
+    icon=['cereal_logger.ico'],
 )
