@@ -1,5 +1,7 @@
+numpy
 pyserial
 pandas
 pathlib
-tabulate
 tk
+customtkinter
+matplotlib

@@ -25,7 +25,7 @@ class APP(ctk.CTk):
         mplstyle.use('fast')
 
         ############## configure application window
-        self.title('Serial Logger')
+        self.title('Serial Logger V4.1.0')
         self.scrn_w = self.winfo_screenwidth() - 100
         self.scrn_h = self.winfo_screenheight() - 100
         self.config(background='black')
@@ -108,8 +108,8 @@ class APP(ctk.CTk):
         
         self.interval_label = ctk.CTkLabel(self.options_frame, corner_radius=5, text='Graphing Interval', fg_color='grey18', text_color='yellow2', font=self.font1)
         self.interval_label.grid(row=4, column=0, padx=5, pady=0, sticky='nsew')
-        self.port_menu = ctk.CTkOptionMenu(self.options_frame, values=list(self.time_map.keys()), variable=self.graphing_interval, button_color='black', dropdown_hover_color='grey50', button_hover_color='grey50', dropdown_font=self.font2, text_color='yellow2', dropdown_text_color='yellow2', dropdown_fg_color='black', font=self.font2, fg_color='black')
-        self.port_menu.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
+        self.interval_menu = ctk.CTkOptionMenu(self.options_frame, values=list(self.time_map.keys()), variable=self.graphing_interval, button_color='black', dropdown_hover_color='grey50', button_hover_color='grey50', dropdown_font=self.font2, text_color='yellow2', dropdown_text_color='yellow2', dropdown_fg_color='black', font=self.font2, fg_color='black')
+        self.interval_menu.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
 
         self.start_button = ctk.CTkButton(self.options_frame, corner_radius=5, text='Start', fg_color='yellow2', text_color='grey18', command=self.log_data, font=self.font1, hover_color='grey50')
         self.start_button.grid(row=6, column=0, padx=5, pady=5, sticky='nsew')
@@ -127,11 +127,13 @@ class APP(ctk.CTk):
                 if not self.port_names:
                     raise ValueError('No Ports detected')
 
+                self.interval_menu.configure(state='disabled')
                 self.port_menu.configure(state='disabled')
                 self.save_as_button.configure(state='disabled', fg_color='grey50')
 
+
                 # Open serial port and get data to create graph buttons, make the buttons, close and reopen the port to clear buffers
-                self.open_port = serial.Serial(port=self.port_selection.get(), baudrate=115200, timeout=10)
+                self.open_port = serial.Serial(port=self.port_selection.get(), baudrate=115200, timeout=3)
 
                 initial_data = self.read_data(self.open_port, time.time())
                 self.parameter_selections = {}
@@ -140,9 +142,10 @@ class APP(ctk.CTk):
 
                 self.open_port.close()
                 for i, label in enumerate(initial_data):
-                    button = ctk.CTkCheckBox(self.selection_frame, text=label, corner_radius=10, checkbox_width=50, hover_color='grey50', border_color='black', fg_color='black', border_width=3)
-                    button.grid(row=math.floor(i/5), column=i%5, padx=5, pady=5, sticky='nsew')
-                    self.parameter_selections[label] = button
+                    if label != 'Time':
+                        button = ctk.CTkCheckBox(self.selection_frame, text=label, corner_radius=10, checkbox_width=50, hover_color='grey50', border_color='black', fg_color='black', border_width=3)
+                        button.grid(row=math.floor(i/5), column=i%5, padx=5, pady=5, sticky='nsew')
+                        self.parameter_selections[label] = button
                 
                 self.open_port.open()
 
@@ -169,6 +172,9 @@ class APP(ctk.CTk):
                 textbox.insert("0.0", err)
                 textbox.grid(row=0, column=0, padx=10, pady=10, sticky='nsew')
             
+                if isinstance(err, ConnectionError):
+                    message_box.protocol("WM_DELETE_WINDOW", self._quit)
+
         else:   # they clicked the stop button
             
             # stop the graphing thread, save data and generate a test comeplete message.
@@ -190,31 +196,41 @@ class APP(ctk.CTk):
             self.lines[param] = line
 
         start_time = time.time()
+        n = 0
 
         while True:
             if self.stop_flag.is_set():
                 break
-            
+        
             try:
                 data = self.read_data(self.open_port, start_time)
 
-                # if the new line has differnt keys(aka parameter like a new tank added or removed) it will delete old buttons and generate new buttons
+                # we will check to see if there is new data points we have not logged yet(such as tanks) an then add buttons to display the data, when tanks leave, the buttons will persist for veiwing.
+                data_set = set(data.keys())
+                param_set = set(self.parameter_selections.keys())
+                param_set.add('Time')
 
-                if self.parameter_selections.keys() != data.keys():
+                new_set = data_set - param_set
 
-                    self.parameter_selections = {}
+                if new_set:
+                    starting_index = len(self.parameter_selections) 
 
-                    for widget in self.selection_frame.winfo_children():              #all existing buttons need to be deleted before making the new ones, but we only want to delete the buttons
-                        if isinstance(widget, (ctk.CTkCheckBox)):
-                            widget.destroy()
-
-                    for i, label in enumerate(data):
+                    for i, label in enumerate(new_set):
                         button = ctk.CTkCheckBox(self.selection_frame, text=label, corner_radius=10, checkbox_width=50, hover_color='grey50', border_color='black', fg_color='black', border_width=3)
-                        button.grid(row=math.floor(i/5), column=i%5, padx=5, pady=5, sticky='nsew')
+                        button.grid(row=math.floor((i + starting_index)/5), column=(i + starting_index)%5, padx=5, pady=5, sticky='nsew')
                         self.parameter_selections[label] = button
+                        line, = self.ax1.plot([],[])
+                        self.lines[label] = line
 
                 self.data_table = pd.concat([self.data_table] + [pd.DataFrame(data, index=[0])], join='outer')
-                self.graph_table = self.data_table.tail(self.time_map[self.graphing_interval.get()]).sort_values('Time')
+                self.graph_table = pd.concat([self.graph_table] + [pd.DataFrame(data, index=[0])]).tail(self.time_map[self.graphing_interval.get()]).sort_values('Time')
+
+                n += 1
+
+                if not n % 300:
+                    self.save(header=False)
+                    self.data_table = None
+
                 self.update_graph()
 
             except Exception as err:
@@ -241,9 +257,10 @@ class APP(ctk.CTk):
 
             for param, button in self.parameter_selections.items():
                 line = self.lines[param]
-                if button:
 
+                if button:
                     if button.get():
+
                         handles.append(line)
                         line.set_visible(True)
                         y_data = self.graph_table[param].values
@@ -255,21 +272,21 @@ class APP(ctk.CTk):
 
                         # This section sets the x and y limits for viewing the graph based on only visible/selected parameters
                         if y_min:
-                            if min(y_data) < y_min:
-                                y_min = min(y_data)
+                            if np.nanmin(y_data) < y_min:
+                                y_min = np.nanmin(y_data)
                         else:
-                            y_min = min(y_data)
+                            y_min = np.nanmin(y_data)
 
                         if y_max:
-                            if max(y_data) > y_max:
-                                y_max = max(y_data)
+                            if np.nanmax(y_data) > y_max:
+                                y_max = np.nanmax(y_data)
                         else: 
-                            y_max = max(y_data)
+                            y_max = np.nanmax(y_data)
                         
                         # used to add margin to the view so that two graphs which are on the edges to not overlap with the axis, not nessisary for max
                         scaling_factor = (y_max - y_min) / 25
-                        y_min -= scaling_factor
-                        y_max += scaling_factor
+                        y_min -= (scaling_factor + 0.01)
+                        y_max += (scaling_factor + 0.01)
 
                     else:
                         line.set_visible(False)  
@@ -305,12 +322,15 @@ class APP(ctk.CTk):
         exit_text_box = ctk.CTkLabel(exit_box, corner_radius=5,text_color='black', font=self.font1, bg_color='grey50', text='Your test is complete!', anchor='center')
         exit_text_box.grid(row=0, column=0, padx=5, pady=5, sticky='nsew')
 
-        exit_box.protocol("WM_DELETE_WINDOW", self._quit) 
+        exit_box.protocol("WM_DELETE_WINDOW", self._quit)
 
 
     def read_data(self, port: object, start_time: float) -> dict:
 
         line = port.readline()
+        if not line:
+            raise ConnectionError('No response from 232 device, please ensure connections')
+
         ascii_data = line.decode(encoding='UTF-8')
         a = ast.literal_eval(ascii_data)
         c = {}
