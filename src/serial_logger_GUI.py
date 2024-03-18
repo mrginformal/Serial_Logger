@@ -6,6 +6,7 @@ import customtkinter as ctk
 import matplotlib.pyplot as plt
 import matplotlib.style as mplstyle
 import sys
+import zlib
 import threading as th
 from pathlib import Path
 import tkinter as tk
@@ -25,7 +26,7 @@ class APP(ctk.CTk):
         mplstyle.use('fast')
 
         ############## configure application window
-        self.title('Serial Logger V4.1.0')
+        self.title('Serial Logger V4.2.0')
         self.scrn_w = self.winfo_screenwidth() - 100
         self.scrn_h = self.winfo_screenheight() - 100
         self.config(background='black')
@@ -46,6 +47,10 @@ class APP(ctk.CTk):
         self.port_selection =  ctk.StringVar(value='Select')
         
         self.port_names = [str(p.device) for p in serial.tools.list_ports.comports()]
+        self.baud_selections = ['Yeti L/XL (115200)', 'Yeti Medium (2000000)']
+        self.baud_rate_map = {'Yeti L/XL (115200)': 115200, 'Yeti Medium (2000000)': 2000000}
+        self.baud_rate_selection = ctk.StringVar(value='baudrate')
+
         self.start_button_state = True
         self.is_valid_filename = False
 
@@ -94,7 +99,7 @@ class APP(ctk.CTk):
         self.options_frame = ctk.CTkFrame(self, corner_radius=5, bg_color='black', fg_color='grey18')
         self.options_frame.grid(row=0, column=1, padx=(5,10), pady=(5,0), sticky='nsew')
         self.options_frame.columnconfigure(0, weight=1)
-        self.options_frame.rowconfigure((0,1,2,3,4,5,6), weight=1)
+        self.options_frame.rowconfigure((0,1,2,3,4,5,6,7), weight=1)
         
         self.save_as_button = ctk.CTkButton(self.options_frame, corner_radius=5, text='SaveAs', fg_color='yellow2', text_color='grey18', font=self.font1, text_color_disabled='black', command=self.get_filename, hover_color='grey50')
         self.save_as_button.grid(row=1, column=0, padx=5, pady=5, sticky='nsew')
@@ -105,14 +110,16 @@ class APP(ctk.CTk):
         self.port_label.grid(row=2, column=0, padx=5, pady=0, sticky='nsew')
         self.port_menu = ctk.CTkOptionMenu(self.options_frame, values=self.port_names, variable=self.port_selection, button_color='black', dropdown_hover_color='grey50', button_hover_color='grey50', dropdown_font=self.font2, text_color='yellow2', dropdown_text_color='yellow2', dropdown_fg_color='black', font=self.font2, fg_color='black')
         self.port_menu.grid(row=3, column=0, padx=5, pady=5, sticky='ew')
+        self.baud_menu = ctk.CTkOptionMenu(self.options_frame, values=self.baud_selections, variable=self.baud_rate_selection, button_color='black', dropdown_hover_color='grey50', button_hover_color='grey50', dropdown_font=self.font2, text_color='yellow2', dropdown_text_color='yellow2', dropdown_fg_color='black', font=self.font2, fg_color='black')
+        self.baud_menu.grid(row=4, column=0, padx=5, pady=5, sticky='ew')
         
         self.interval_label = ctk.CTkLabel(self.options_frame, corner_radius=5, text='Graphing Interval', fg_color='grey18', text_color='yellow2', font=self.font1)
-        self.interval_label.grid(row=4, column=0, padx=5, pady=0, sticky='nsew')
+        self.interval_label.grid(row=5, column=0, padx=5, pady=0, sticky='nsew')
         self.interval_menu = ctk.CTkOptionMenu(self.options_frame, values=list(self.time_map.keys()), variable=self.graphing_interval, button_color='black', dropdown_hover_color='grey50', button_hover_color='grey50', dropdown_font=self.font2, text_color='yellow2', dropdown_text_color='yellow2', dropdown_fg_color='black', font=self.font2, fg_color='black')
-        self.interval_menu.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
+        self.interval_menu.grid(row=6, column=0, padx=5, pady=5, sticky='ew')
 
         self.start_button = ctk.CTkButton(self.options_frame, corner_radius=5, text='Start', fg_color='yellow2', text_color='grey18', command=self.log_data, font=self.font1, hover_color='grey50')
-        self.start_button.grid(row=6, column=0, padx=5, pady=5, sticky='nsew')
+        self.start_button.grid(row=7, column=0, padx=5, pady=5, sticky='nsew')
 
 
     def log_data(self):
@@ -126,6 +133,9 @@ class APP(ctk.CTk):
                 
                 if not self.port_names:
                     raise ValueError('No Ports detected')
+                
+                if self.baud_rate_selection.get() == 'Baudrate':
+                    raise ValueError('please select a baudrate for your Comport')
 
                 self.interval_menu.configure(state='disabled')
                 self.port_menu.configure(state='disabled')
@@ -133,7 +143,7 @@ class APP(ctk.CTk):
 
 
                 # Open serial port and get data to create graph buttons, make the buttons, close and reopen the port to clear buffers
-                self.open_port = serial.Serial(port=self.port_selection.get(), baudrate=115200, timeout=3)
+                self.open_port = serial.Serial(port=self.port_selection.get(), baudrate=self.baud_rate_map[self.baud_rate_selection.get()], timeout=7)
 
                 initial_data = self.read_data(self.open_port, time.time())
                 self.parameter_selections = {}
@@ -331,7 +341,18 @@ class APP(ctk.CTk):
         if not line:
             raise ConnectionError('No response from 232 device, please ensure connections')
 
-        ascii_data = line.decode(encoding='UTF-8')
+        # if its in the new format, run a crc, if not, just use literaleval
+        s_line = line.split(b'#')
+        if s_line[-1] == b'serial_log':
+            calc_crc = zlib.crc32(s_line[0])
+            if calc_crc == s_line([1]):
+                ascii_data = s_line[0].decode(encoding='UTF-8')
+            else:
+                raise ValueError('CRC mismatch, skipping line')
+        
+        else:
+            ascii_data = line.decode(encoding='UTF-8')
+
         a = ast.literal_eval(ascii_data)
         c = {}
         for item in a:
@@ -346,7 +367,8 @@ class APP(ctk.CTk):
             else:
                 c[item] = [a[item]]
         
-        c['Inverter Pwr(W - Calculated)'] = [a['InvOut(mA)'] * a['InvOut(mV)'] / 1_000_000]
+        if 'InvOut(mA)' in a and 'InvOut(mV)' in a:
+            c['Inverter Pwr(W - Calculated)'] = [a['InvOut(mA)'] * a['InvOut(mV)'] / 1_000_000]
         c['Time'] = round(time.time() - start_time, 1)
         return c
     
