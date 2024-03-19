@@ -26,7 +26,7 @@ class APP(ctk.CTk):
         mplstyle.use('fast')
 
         ############## configure application window
-        self.title('Serial Logger V4.2.0')
+        self.title('Serial Logger V4.2.1')
         self.scrn_w = self.winfo_screenwidth() - 100
         self.scrn_h = self.winfo_screenheight() - 100
         self.config(background='black')
@@ -238,8 +238,10 @@ class APP(ctk.CTk):
                 n += 1
 
                 if not n % 300:
-                    self.save(header=False)
-                    self.data_table = None
+                    if self.filename.is_file(): 
+                        self.save(header=False)
+                    else:
+                        self.save()
 
                 self.update_graph()
 
