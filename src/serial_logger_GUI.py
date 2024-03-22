@@ -1,4 +1,5 @@
 import serial
+import serial.serialutil
 import serial.tools.list_ports
 import pandas as pd
 import numpy as np
@@ -26,7 +27,7 @@ class APP(ctk.CTk):
         mplstyle.use('fast')
 
         ############## configure application window
-        self.title('Serial Logger V4.2.1')
+        self.title('Serial Logger V4.2.2')
         self.scrn_w = self.winfo_screenwidth() - 100
         self.scrn_h = self.winfo_screenheight() - 100
         self.config(background='black')
@@ -49,8 +50,9 @@ class APP(ctk.CTk):
         self.port_names = [str(p.device) for p in serial.tools.list_ports.comports()]
         self.baud_selections = ['Yeti L/XL (115200)', 'Yeti Medium (2000000)']
         self.baud_rate_map = {'Yeti L/XL (115200)': 115200, 'Yeti Medium (2000000)': 2000000}
-        self.baud_rate_selection = ctk.StringVar(value='baudrate')
+        self.baud_rate_selection = ctk.StringVar(value='Baudrate')
 
+        self.message_box_exists = False
         self.start_button_state = True
         self.is_valid_filename = False
 
@@ -132,20 +134,17 @@ class APP(ctk.CTk):
                     raise ValueError('No valid Filename selected')
                 
                 if not self.port_names:
-                    raise ValueError('No Ports detected')
+                    raise ValueError('No Ports detected, please connect your device and restart applicaiton')
                 
                 if self.baud_rate_selection.get() == 'Baudrate':
                     raise ValueError('please select a baudrate for your Comport')
-
-                self.interval_menu.configure(state='disabled')
-                self.port_menu.configure(state='disabled')
-                self.save_as_button.configure(state='disabled', fg_color='grey50')
 
 
                 # Open serial port and get data to create graph buttons, make the buttons, close and reopen the port to clear buffers
                 self.open_port = serial.Serial(port=self.port_selection.get(), baudrate=self.baud_rate_map[self.baud_rate_selection.get()], timeout=7)
 
                 initial_data = self.read_data(self.open_port, time.time())
+
                 self.parameter_selections = {}
                 self.data_table = None
                 self.graph_table = None
@@ -168,6 +167,10 @@ class APP(ctk.CTk):
                 plotting_thread.start()
             
                 #change the start button to a stop button, and changed the flag to false so the next time you press it will exit the program
+                self.interval_menu.configure(state='disabled')
+                self.port_menu.configure(state='disabled')
+                self.baud_menu.configure(state='disabled')
+                self.save_as_button.configure(state='disabled', fg_color='grey50')
                 self.start_button_state = False
                 self.start_button.configure(text='Stop')
 
@@ -181,9 +184,9 @@ class APP(ctk.CTk):
                 textbox = ctk.CTkTextbox(message_box, corner_radius=5, text_color='black', bg_color='grey50', fg_color='grey50', wrap='word')
                 textbox.insert("0.0", err)
                 textbox.grid(row=0, column=0, padx=10, pady=10, sticky='nsew')
-            
-                if isinstance(err, ConnectionError):
-                    message_box.protocol("WM_DELETE_WINDOW", self._quit)
+
+                if hasattr(self, 'open_port'):      #if an issue occured, ensure we close the ports before trying to open it again, else we will get a permission error. 
+                    self.open_port.close()
 
         else:   # they clicked the stop button
             
@@ -245,16 +248,39 @@ class APP(ctk.CTk):
 
                 self.update_graph()
 
-            except Exception as err:
-                message_box = tk.Toplevel(self)
-                message_box.configure(background='grey50')
-                message_box.title('Error Message')
-                message_box.geometry(f'300x150+{(int(self.winfo_screenwidth()/2) - 150)}+{(int(self.winfo_screenheight()/2) - 75)}')
-                textbox = ctk.CTkTextbox(message_box, corner_radius=5, text_color='black', bg_color='grey50', fg_color='grey50', wrap='word')
-                textbox.insert("0.0", err)
-                textbox.grid(row=0, column=0, padx=10, pady=10, sticky='nsew')
+            except UnicodeDecodeError as err:
+                print('Decode Error: skipping datapoint')
 
-                message_box.protocol("WM_DELETE_WINDOW", self._quit)
+            except Exception as err:
+
+                if self.message_box_exists:
+                    textbox.insert('end', '\n' + str(err))
+                    if isinstance(err, serial.serialutil.SerialException):
+                        message_box.protocol("WM_DELETE_WINDOW", self._quit)
+                        break
+
+                    
+                else:
+                    message_box = tk.Toplevel(self)
+                    message_box.configure(background='grey50')
+                    message_box.title('Error Message')
+                    message_box.geometry(f'300x200+{(int(self.winfo_screenwidth()/2) - 150)}+{(int(self.winfo_screenheight()/2) - 75)}')
+                    message_box.grid_columnconfigure(0, weight=1)
+                    message_box.grid_rowconfigure(0, weight=5)
+                    message_box.grid_rowconfigure(1,weight=1, minsize=50)
+                    textbox = ctk.CTkTextbox(message_box, corner_radius=5, text_color='black', bg_color='grey50', fg_color='grey50', wrap='word')
+                    textbox.insert("0.0", err)
+                    textbox.grid(row=0, column=0, padx=5, pady=5, sticky='nsew')
+                    exit_button = ctk.CTkButton(message_box, corner_radius=5, text='Exit', fg_color='yellow2', text_color='grey18', font=self.font1, text_color_disabled='black', command=self._quit, hover_color='grey50')
+                    exit_button.grid(row=1, column=0, padx=5, pady=5, sticky='nsew')
+                    self.message_box_exists = True
+                    if isinstance(err, serial.serialutil.SerialException):
+                        message_box.protocol("WM_DELETE_WINDOW", self._quit)
+                        break
+                    else:
+                        message_box.protocol("WM_DELETE_WINDOW", lambda: self._close(message_box))
+
+
 
 
     def update_graph(self):
@@ -388,6 +414,9 @@ class APP(ctk.CTk):
         self.destroy()
         sys.exit()
 
+    def _close(self, messagebox):
+        messagebox.destroy()
+        self.message_box_exists = False
 
 ################################################################################################################
         
