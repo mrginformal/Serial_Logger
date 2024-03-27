@@ -27,7 +27,7 @@ class APP(ctk.CTk):
         mplstyle.use('fast')
 
         ############## configure application window
-        self.title('Serial Logger V4.2.2')
+        self.title('Serial Logger V4.2.3')
         self.scrn_w = self.winfo_screenwidth() - 100
         self.scrn_h = self.winfo_screenheight() - 100
         self.config(background='black')
@@ -143,20 +143,10 @@ class APP(ctk.CTk):
                 # Open serial port and get data to create graph buttons, make the buttons, close and reopen the port to clear buffers
                 self.open_port = serial.Serial(port=self.port_selection.get(), baudrate=self.baud_rate_map[self.baud_rate_selection.get()], timeout=7)
 
-                initial_data = self.read_data(self.open_port, time.time())
-
                 self.parameter_selections = {}
                 self.data_table = None
                 self.graph_table = None
 
-                self.open_port.close()
-                for i, label in enumerate(initial_data):
-                    if label != 'Time':
-                        button = ctk.CTkCheckBox(self.selection_frame, text=label, corner_radius=10, checkbox_width=50, hover_color='grey50', border_color='black', fg_color='black', border_width=3)
-                        button.grid(row=math.floor(i/5), column=i%5, padx=5, pady=5, sticky='nsew')
-                        self.parameter_selections[label] = button
-                
-                self.open_port.open()
 
                 # open thread which setsup and handles the data processing/graphing loop
                 plotting_thread = th.Thread(target=self.plot_data, daemon=True)
@@ -235,8 +225,16 @@ class APP(ctk.CTk):
                         line, = self.ax1.plot([],[])
                         self.lines[label] = line
 
+
                 self.data_table = pd.concat([self.data_table] + [pd.DataFrame(data, index=[0])], join='outer')
-                self.graph_table = pd.concat([self.graph_table] + [pd.DataFrame(data, index=[0])]).tail(self.time_map[self.graphing_interval.get()]).sort_values('Time')
+
+                graphing_interval_linecount = self.time_map[self.graphing_interval.get()]           # will equal "None" if they select "ShowMeTheData"
+
+                if graphing_interval_linecount:
+                    self.graph_table = pd.concat([self.graph_table] + [pd.DataFrame(data, index=[0])]).tail(self.time_map[self.graphing_interval.get()]).sort_values('Time')
+
+                else:
+                    self.graph_table = pd.concat([self.graph_table] + [pd.DataFrame(data, index=[0])]).sort_values('Time')
 
                 n += 1
 
@@ -397,7 +395,11 @@ class APP(ctk.CTk):
         
         if 'InvOut(mA)' in a and 'InvOut(mV)' in a:
             c['Inverter Pwr(W - Calculated)'] = [a['InvOut(mA)'] * a['InvOut(mV)'] / 1_000_000]
-        c['Time'] = round(time.time() - start_time, 1)
+        
+        time_stamp = time.time()
+        c['Time'] = round(time_stamp - start_time, 1)
+        c['Epoch_Time'] = round(time_stamp, 1)
+
         return c
     
 
