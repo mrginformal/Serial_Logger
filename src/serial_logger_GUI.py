@@ -27,7 +27,7 @@ class APP(ctk.CTk):
         mplstyle.use('fast')
 
         ############## configure application window
-        self.title('Serial Logger V4.2.3')
+        self.title('Serial Logger V4.2.4')
         self.scrn_w = self.winfo_screenwidth() - 100
         self.scrn_h = self.winfo_screenheight() - 100
         self.config(background='black')
@@ -247,7 +247,10 @@ class APP(ctk.CTk):
                 self.update_graph()
 
             except UnicodeDecodeError as err:
-                print('Decode Error: skipping datapoint')
+                print('Decode Error: skipping datapoint') 
+
+            except SyntaxError as err:
+                pass            #if the data string is invalid and cannot be evaled, it will skip the datapoint
 
             except Exception as err:
 

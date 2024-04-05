@@ -1,0 +1,5 @@
+import ast
+
+
+
+ast.literal_eval('asdf{asdfasdf,asdfasdf}')
