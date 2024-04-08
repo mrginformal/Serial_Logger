@@ -371,8 +371,9 @@ class APP(ctk.CTk):
             raise ConnectionError('No response from 232 device, please ensure connections')
 
         # if its in the new format, run a crc, if not, just use literaleval
-        s_line = line.split(b'#')
-        if s_line[-1] == b'serial_log':
+
+        if self.baud_rate_selection.get() == 'Yeti Medium (2000000)':
+            s_line = line.split(b'#')
             calc_crc = zlib.crc32(s_line[0])
             if calc_crc == s_line([1]):
                 ascii_data = s_line[0].decode(encoding='UTF-8')
