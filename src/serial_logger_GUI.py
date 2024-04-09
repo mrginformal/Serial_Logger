@@ -27,7 +27,7 @@ class APP(ctk.CTk):
         mplstyle.use('fast')
 
         ############## configure application window
-        self.title('Serial Logger V4.2.4')
+        self.title('Serial Logger V4.2.5')
         self.scrn_w = self.winfo_screenwidth() - 100
         self.scrn_h = self.winfo_screenheight() - 100
         self.config(background='black')
@@ -217,6 +217,7 @@ class APP(ctk.CTk):
 
                 if new_set:
                     starting_index = len(self.parameter_selections) 
+                    print('newset')
 
                     for i, label in enumerate(new_set):
                         button = ctk.CTkCheckBox(self.selection_frame, text=label, corner_radius=10, checkbox_width=50, hover_color='grey50', border_color='black', fg_color='black', border_width=3)
@@ -249,8 +250,8 @@ class APP(ctk.CTk):
             except UnicodeDecodeError as err:
                 print('Decode Error: skipping datapoint') 
 
-            except SyntaxError as err:
-                pass            #if the data string is invalid and cannot be evaled, it will skip the datapoint
+            except (SyntaxError, NameError) as err:
+                pass            #if the line cannot be evaluated, or if the line didn't have the correct syntax/identifiers, skip it
 
             except Exception as err:
 
@@ -371,15 +372,22 @@ class APP(ctk.CTk):
             raise ConnectionError('No response from 232 device, please ensure connections')
 
         # if its in the new format, run a crc, if not, just use literaleval
+        s_line = line.split(b'#')
 
         if self.baud_rate_selection.get() == 'Yeti Medium (2000000)':
-            s_line = line.split(b'#')
-            calc_crc = zlib.crc32(s_line[0])
-            if calc_crc == s_line([1]):
-                ascii_data = s_line[0].decode(encoding='UTF-8')
+            if s_line[-1] == b'serial_log\n':
+
+                data = b'#'.join(s_line[:-2])
+                calc_crc = zlib.crc32(data)
+
+                if calc_crc == int(s_line[-2].decode(encoding='UTF-8')):
+                    ascii_data = data.decode(encoding='UTF-8')
+                else:
+                    raise ValueError('CRC mismatch, skipping line')
+            
             else:
-                raise ValueError('CRC mismatch, skipping line')
-        
+                raise NameError()
+            
         else:
             ascii_data = line.decode(encoding='UTF-8')
 
