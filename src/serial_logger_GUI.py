@@ -48,9 +48,9 @@ class APP(ctk.CTk):
         self.port_selection =  ctk.StringVar(value='Select')
         
         self.port_names = [str(p.device) for p in serial.tools.list_ports.comports()]
-        self.baud_selections = ['Yeti L/XL (115200)', 'Yeti Medium (2000000)']
-        self.baud_rate_map = {'Yeti L/XL (115200)': 115200, 'Yeti Medium (2000000)': 2000000}
-        self.baud_rate_selection = ctk.StringVar(value='Baudrate')
+        self.yeti_type = ['Yeti L/XL', 'Yeti Medium']
+        self.baud_rate_map = {'Yeti L/XL': 115_200, 'Yeti Medium': 115_200}
+        self.yeti_selection = ctk.StringVar(value='Y?')
 
         self.message_box_exists = False
         self.start_button_state = True
@@ -112,8 +112,8 @@ class APP(ctk.CTk):
         self.port_label.grid(row=2, column=0, padx=5, pady=0, sticky='nsew')
         self.port_menu = ctk.CTkOptionMenu(self.options_frame, values=self.port_names, variable=self.port_selection, button_color='black', dropdown_hover_color='grey50', button_hover_color='grey50', dropdown_font=self.font2, text_color='yellow2', dropdown_text_color='yellow2', dropdown_fg_color='black', font=self.font2, fg_color='black')
         self.port_menu.grid(row=3, column=0, padx=5, pady=5, sticky='ew')
-        self.baud_menu = ctk.CTkOptionMenu(self.options_frame, values=self.baud_selections, variable=self.baud_rate_selection, button_color='black', dropdown_hover_color='grey50', button_hover_color='grey50', dropdown_font=self.font2, text_color='yellow2', dropdown_text_color='yellow2', dropdown_fg_color='black', font=self.font2, fg_color='black')
-        self.baud_menu.grid(row=4, column=0, padx=5, pady=5, sticky='ew')
+        self.yeti_select_menu = ctk.CTkOptionMenu(self.options_frame, values=self.yeti_type, variable=self.yeti_selection, button_color='black', dropdown_hover_color='grey50', button_hover_color='grey50', dropdown_font=self.font2, text_color='yellow2', dropdown_text_color='yellow2', dropdown_fg_color='black', font=self.font2, fg_color='black')
+        self.yeti_select_menu.grid(row=4, column=0, padx=5, pady=5, sticky='ew')
         
         self.interval_label = ctk.CTkLabel(self.options_frame, corner_radius=5, text='Graphing Interval', fg_color='grey18', text_color='yellow2', font=self.font1)
         self.interval_label.grid(row=5, column=0, padx=5, pady=0, sticky='nsew')
@@ -136,12 +136,12 @@ class APP(ctk.CTk):
                 if not self.port_names:
                     raise ValueError('No Ports detected, please connect your device and restart applicaiton')
                 
-                if self.baud_rate_selection.get() == 'Baudrate':
-                    raise ValueError('please select a baudrate for your Comport')
+                if self.yeti_selection.get() == 'Y?':
+                    raise ValueError('please select a yeti type')
 
 
                 # Open serial port and get data to create graph buttons, make the buttons, close and reopen the port to clear buffers
-                self.open_port = serial.Serial(port=self.port_selection.get(), baudrate=self.baud_rate_map[self.baud_rate_selection.get()], timeout=7)
+                self.open_port = serial.Serial(port=self.port_selection.get(), baudrate=self.baud_rate_map[self.yeti_selection.get()], timeout=7)
 
                 self.parameter_selections = {}
                 self.data_table = None
@@ -159,7 +159,7 @@ class APP(ctk.CTk):
                 #change the start button to a stop button, and changed the flag to false so the next time you press it will exit the program
                 self.interval_menu.configure(state='disabled')
                 self.port_menu.configure(state='disabled')
-                self.baud_menu.configure(state='disabled')
+                self.yeti_select_menu.configure(state='disabled')
                 self.save_as_button.configure(state='disabled', fg_color='grey50')
                 self.start_button_state = False
                 self.start_button.configure(text='Stop')
@@ -217,7 +217,6 @@ class APP(ctk.CTk):
 
                 if new_set:
                     starting_index = len(self.parameter_selections) 
-                    print('newset')
 
                     for i, label in enumerate(new_set):
                         button = ctk.CTkCheckBox(self.selection_frame, text=label, corner_radius=10, checkbox_width=50, hover_color='grey50', border_color='black', fg_color='black', border_width=3)
@@ -370,11 +369,11 @@ class APP(ctk.CTk):
         line = port.readline()
         if not line:
             raise ConnectionError('No response from 232 device, please ensure connections')
-
+        
         # if its in the new format, run a crc, if not, just use literaleval
         s_line = line.split(b'#')
 
-        if self.baud_rate_selection.get() == 'Yeti Medium (2000000)':
+        if self.yeti_selection.get() == 'Yeti Medium':
             if s_line[-1] == b'serial_log\n':
 
                 data = b'#'.join(s_line[:-2])
