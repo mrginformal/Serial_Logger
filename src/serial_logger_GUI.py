@@ -146,6 +146,7 @@ class APP(ctk.CTk):
                 self.parameter_selections = {}
                 self.data_table = None
                 self.graph_table = None
+                self.wh_dict = {}
 
 
                 # open thread which setsup and handles the data processing/graphing loop
@@ -392,11 +393,28 @@ class APP(ctk.CTk):
 
         a = ast.literal_eval(ascii_data)
         c = {}
+        time_stamp = time.time()
+        
+        ### data manipulation
+
         for item in a:
             if 'Pack(mA)' in item:          #corrects for the fact that pack actually reports in centiamps, not (mA)
                 c[item.replace('(mA)', '(A)')] = [a[item] / 100]
-                c[item.replace('Pack(mA)', 'Pack_Power(Wh - Calculated)')] = [a[item] * a[item[:-4] + '(mV)'] / 1_000_00]   #Pack_Power(Wh - Calculated)
-
+                calc_power = a[item] * a[item[:-4] + '(mV)'] / 1_000_00
+                c[item.replace('Pack(mA)', 'Pack_Power(Watts - Calculated)')] = [calc_power]   #Pack_Power(Wh - Calculated)
+                if calc_power >= 0:
+                    key = item.replace('Pack(mA)', 'Wh_In(Calculated)')
+                else:
+                    key = item.replace('Pack(mA)', 'Wh_Out(Calculated)')
+                
+                if key in self.wh_dict.keys():
+                    prev_wh, prev_time = self.wh_dict[key]
+                    wh_increment = prev_wh + (calc_power * (time_stamp-prev_time) / 3600) # converter watt/sec to watt/hours, this assumes
+                else:
+                    wh_increment = calc_power / 3600            #makes first wh measurement(assumes only once second at that power level, as we don't have a previous value)
+                c[key] = wh_increment
+                self.wh_dict[key] = (wh_increment, time_stamp)
+                
             elif '(mA)' in item:
                 c[item.replace('(mA)', '(A)')] = [a[item] / 1000]
             elif '(mV)' in item:
@@ -407,7 +425,6 @@ class APP(ctk.CTk):
         if 'InvOut(mA)' in a and 'InvOut(mV)' in a:
             c['Inverter Pwr(W - Calculated)'] = [a['InvOut(mA)'] * a['InvOut(mV)'] / 1_000_000]
         
-        time_stamp = time.time()
         c['Time'] = round(time_stamp - start_time, 1)
         c['Epoch_Time'] = round(time_stamp, 1)
 
